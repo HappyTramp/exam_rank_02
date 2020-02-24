@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   utils.c                                            :+:      :+:    :+:   */
+/*   ft_printf.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: exam <marvin@42.fr>                        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2020/02/14 16:57:09 by exam              #+#    #+#             */
-/*   Updated: 2020/02/14 18:54:02 by exam             ###   ########.fr       */
+/*   Created: 2020/02/24 17:21:15 by exam              #+#    #+#             */
+/*   Updated: 2020/02/24 18:33:59 by exam             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,20 +14,41 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#include <stdio.h>
-void	ft_putchar(char c)
-{
-	write(1, &c, 1);
-}
-
-int		ft_strlen(char *s)
+int ft_strlen(char *s)
 {
 	int i;
-
+	
 	i = 0;
 	while (s[i])
 		i++;
 	return (i);
+}
+
+char *ft_strcpy(char *dest, char *src)
+{
+	char	*d;
+	
+	d = dest;
+	while (*src)
+		*dest++ = *src++;
+	*dest = '\0';
+	return (d);
+}
+
+char *ft_strncpy(char *dest, char *src, int n)
+{
+	char	*d;
+
+	d = dest;
+	while (*src && n-- > 0)
+		*dest++ = *src++;
+	*dest = '\0';
+	return (d);
+}
+
+void	ft_putchar(char c)
+{
+	write(1, &c, 1);
 }
 
 void	ft_putstr(char *s)
@@ -35,268 +56,256 @@ void	ft_putstr(char *s)
 	write(1, s, ft_strlen(s));
 }
 
-char	*ft_strcpy(char *dest, char *src)
+void	ft_putnbr_base(long long n, char *base, int radix)
 {
-	char *s;
-
-	s = dest;
-	while (*src)
-		*dest++ = *src++;
-	*dest = '\0';
-	return (s);
+	if (n < 0)
+	{
+		ft_putchar('-');
+		ft_putnbr_base(-n, base, radix);
+		return ;
+	}
+	if (n > radix - 1)
+		ft_putnbr_base(n / radix, base, radix);
+	ft_putchar(base[n % radix]);
 }
 
-char	*ft_strdup(char *s)
+int		nbrlen(long long n, int radix)
 {
-	char	*clone;
+	int i;
 
-	if ((clone = malloc(ft_strlen(s) + 1)) == NULL)
+	if (n == 0)
+		return (1);
+	i = 0;
+	if (n < 0)
+	{
+		i++;
+		n = -n;
+	}
+	while (n > 0)
+	{
+		n /= radix;
+		i++;
+	}
+	return (i);
+}
+
+char	*ft_strndup(char *s, int n)
+{
+	char	*d;
+
+	if ((d = malloc(sizeof(char) * (n + 1))) == NULL)
 		return (NULL);
-	ft_strcpy(clone, s);
-	return (clone);
-}
-
-char	*ft_strcat(char *dest, char *src)
-{
-	char *s;
-
-	s = dest;
-	while (*dest)
-		dest++;
-	while (*src)
-		*dest++ = *src++;
-	*dest = '\0';
-	return (s);
-}
-
-static int	st_itoa_base_count(long num, int radix)
-{
-	int	counter;
-
-	counter = 0;
-	if (num <= 0)
-		counter = 1;
-	while (num > 0)
-	{
-		num /= radix;
-		counter++;
-	}
-	return (counter);
-}
-
-char	*ft_itoa_base(long long num, char *base)
-{
-	int		radix;
-	char	*s;
-	int		i;
-	int		is_neg;
-
-	radix = ft_strlen(base);
-	if ((s = malloc(st_itoa_base_count(num, radix) + 1)) == NULL)
-		return (NULL);
-	s[st_itoa_base_count(num, radix)] = '\0';
-	is_neg = 0;
-	if (num < 0)
-	{
-		s[0] = '-';
-		num = -num;
-		is_neg = 1;
-	}
-	i = st_itoa_base_count(num, radix);
-	if (num == 0)
-	{
-		s[0] = base[0];
-		return (s);
-	}
-	while (i >= is_neg ? 1 : 0)
-	{
-		i--;
-		s[is_neg ? i + 1 : i] = base[num % radix];
-		num /= radix;
-	}
-	return (s);
+	return (ft_strncpy(d, s, n));
 }
 
 int		ft_atoi_skip(char **s)
 {
-	long	num;
+	long	n;
 
-	num = 0;
+	n = 0;
 	while (**s >= '0' && **s <= '9')
 	{
-		num *= 10;
-		num += **s - '0';
+		n *= 10;
+		n += **s - '0';
 		(*s)++;
 	}
-	return ((int)num);
+	return ((int)n);
 }
 
 typedef struct
 {
-	int	precision;
-	int width;
-}	t_parsing;
+	int		precision;
+	int		width;
+	char	specifier;
+}		t_parsing;
 
-char	*parse(t_parsing *parsing, char *fmt)
+char	*parse(char *fmt, t_parsing *parsing)
 {
-	parsing->precision = -1;
 	parsing->width = -1;
-
+	parsing->precision = -1;
 	if (*fmt >= '0' && *fmt <= '9')
 		parsing->width = ft_atoi_skip(&fmt);
 	if (*fmt == '.')
-	{
 		fmt++;
+	if (*fmt >= '0' && *fmt <= '9')
 		parsing->precision = ft_atoi_skip(&fmt);
-	}
+	parsing->specifier = *fmt++;
 	return (fmt);
 }
 
-int	convert_str(va_list ap, t_parsing *parsing)
+int	convert_s(va_list ap, t_parsing *parsing)
 {
-	int		written;
 	char	*tmp;
-	char	*str;
-	int		is_null;
+	int		len;
+	char	s[400000];
+	int		counter;
 
-	str = va_arg(ap, char*);
-	is_null = str == NULL;
-	if (str == NULL)
-		if ((str = ft_strdup("(null)")) == NULL)
-			return (-1);
-	if (parsing->precision != -1 && ft_strlen(str) > parsing->precision)
+	tmp = va_arg(ap, char*);
+	if (tmp == NULL)
+		ft_strcpy(s, "(null)");
+	else
+		ft_strcpy(s, tmp);
+	len = ft_strlen(s);
+	if (parsing->width != -1 && parsing->precision != -1)
 	{
-		if ((tmp = ft_strdup(str)) == NULL)
-			return (-1);
-		tmp[parsing->precision] = '\0';
-		str = tmp;
-	}
-	written = ft_strlen(str);
-	if (parsing->width != -1)
-	{
-		while (ft_strlen(str) < parsing->width)
-		{
+		while (len > parsing->precision)
+			len--;
+		s[len] = 0;
+		counter = parsing->width > len ? parsing->width : len;
+		while (parsing->width-- > len)
 			ft_putchar(' ');
-			parsing->width--;
-			written++;
-		}
+		ft_putstr(s);
+		return (counter);
 	}
-	ft_putstr(str);
-	if (parsing->precision != -1 || is_null)
-		free(str);
-	return (written);
+	else if (parsing->width != -1)
+	{
+		counter = parsing->width > len ? parsing->width : len;
+		while (parsing->width-- > len)
+			ft_putchar(' ');
+		ft_putstr(s);
+		return (counter);
+	}
+	else if (parsing->precision != -1)
+	{
+		counter = parsing->precision < len ? parsing->precision : len;
+		while (len-- > parsing->precision)
+			;
+		s[len + 1] = 0;
+		ft_putstr(s);
+		return (counter);
+	}
+	else
+		ft_putstr(s);
+	return (len);
 }
 
 int	convert_d(va_list ap, t_parsing *parsing)
 {
-	int		i;
-	int		len;
-	long int		num;
-	char	*s;
-	char	*tmp;
+	long	n;
+	int len;
+	int counter;
 
-	num = va_arg(ap, int);
-	if ((s = ft_itoa_base(num, "0123456789")) == NULL)
-		return (-1);
-	len = ft_strlen(s);
-	if (parsing->precision != -1 && len < parsing->precision)
+	n = (long)va_arg(ap, int);
+	len = nbrlen(n, 10);
+	if (parsing->width != -1 && parsing->precision != -1)
 	{
-		if ((tmp = malloc(parsing->precision + 10)) == NULL)
-			return (-1);
-		ft_strcpy(tmp + parsing->precision - len, s);
-		i = 0;
-		while (i <  parsing->precision - len)
-		{
-			tmp[i] = '0';
-			i++;
-		}
-		s = tmp;
-	}
-	len = ft_strlen(s);
-	if (parsing->width != -1 && len < parsing->width)
-	{
-		while (len < parsing->width)
+		counter = parsing->width > len ? parsing->width : len;
+		while (parsing->width > (parsing->precision > len ? (n < 0 ? parsing->precision + 1 : parsing->precision) : len))
 		{
 			ft_putchar(' ');
-			len++;
+			parsing->width--;
 		}
+		if (n < 0)
+		{
+			ft_putchar('-');
+			n = -n;
+			len--;
+		}
+		counter = counter > parsing->precision ? counter :parsing->precision;
+		while (parsing->precision-- > len)
+			ft_putchar('0');
+		ft_putnbr_base(n, "0123456789", 10);
+		return (counter);
 	}
-	ft_putstr(s);
-	free(s);
+	else if (parsing->width != -1)
+	{
+		counter = parsing->width > len ? parsing->width : len;
+		while (parsing->width-- > len)
+			ft_putchar(' ');
+		ft_putnbr_base(n, "0123456789", 10);
+		return (counter);
+	}
+	else if (parsing->precision != -1)
+	{
+		counter = 0;
+		if (n < 0)
+		{
+			ft_putchar('-');
+			n = -n;
+			len--;
+			counter = 1;
+		}
+		counter += parsing->precision > len ? parsing->precision : len;
+		while (parsing->precision-- > len)
+			ft_putchar('0');
+		ft_putnbr_base(n, "0123456789", 10);
+		return (counter);
+	}
+	ft_putnbr_base(n, "0123456789", 10);
 	return (len);
 }
 
 int	convert_x(va_list ap, t_parsing *parsing)
 {
-	int				i;
+	unsigned int	n;
 	int				len;
-	long unsigned int	num;
-	char			*s;
-	char			*tmp;
+	int				counter;
 
-	num = va_arg(ap, unsigned int);
-	if ((s = ft_itoa_base(num, "0123456789abcdef")) == NULL)
-		return (-1);
-	len = ft_strlen(s);
-	if (parsing->precision != -1 && len < parsing->precision)
+	n = va_arg(ap, unsigned int);
+	len = nbrlen(n, 16);
+	if (parsing->width != -1 && parsing->precision != -1)
 	{
-		if ((tmp = malloc(parsing->precision + 1)) == NULL)
-			return (-1);
-		ft_strcpy(tmp + parsing->precision - len, s);
-		i = 0;
-		while (i <  parsing->precision - len)
-		{
-			tmp[i] = '0';
-			i++;
-		}
-		free(s);
-		s = tmp;
-	}
-	len = ft_strlen(s);
-	if (parsing->width != -1 && len < parsing->width)
-	{
-		while (len < parsing->width)
-		{
+		counter = parsing->width > len ? parsing->width : len;
+		while (parsing->width-- > (parsing->precision > len ? parsing->precision : len))
 			ft_putchar(' ');
-			len++;
-		}
+		counter = counter > parsing->precision ? counter :parsing->precision;
+		counter = counter > parsing->precision ? counter :parsing->precision;
+		counter = counter > parsing->precision ? counter :parsing->precision;
+		counter = counter > parsing->precision ? counter :parsing->precision;
+		while (parsing->precision-- > len)
+			ft_putchar('0');
+		ft_putnbr_base(n, "0123456789abcdef", 16);
+		return (counter);
 	}
-	ft_putstr(s);
-	if (parsing->precision == -1)
-		free(s);
-//	free(s);
+	else if (parsing->width != -1)
+	{
+		counter = parsing->width > len ? parsing->width : len;
+		while (parsing->width-- > len)
+			ft_putchar(' ');
+		ft_putnbr_base(n, "0123456789abcdef", 16);
+		return (counter);
+	}
+	else if (parsing->precision != -1)
+	{
+		counter = len > parsing->precision ? len :parsing->precision;
+		while (parsing->precision-- > len)
+			ft_putchar('0');
+		ft_putnbr_base(n, "0123456789abcdef", 16);
+		return (counter);
+	}
+	ft_putnbr_base(n, "0123456789abcdef", 16);
 	return (len);
 }
 
 int ft_printf(const char *fmt, ... )
 {
 	t_parsing	parsing;
+	int 		counter;
 	va_list		ap;
-	int			i;
-	int			tmp;
 
 	va_start(ap, fmt);
-	i = 0;
+	counter = 0;
 	while (*fmt)
 	{
 		if (*fmt == '%')
 		{
-			fmt = parse(&parsing, (char*)++fmt);
-			if (*fmt == 's')
-				i += convert_str(ap, &parsing);
-			else if (*fmt == 'd')
-				i += convert_d(ap, &parsing);
-			else if (*fmt == 'x')
-				i += convert_x(ap, &parsing);
 			fmt++;
+			fmt = parse((char*)fmt, &parsing);
+//			printf("%d %d\n", parsing.width, parsing.precision);
+			if (parsing.specifier == 's')
+				counter += convert_s(ap, &parsing);
+			else if (parsing.specifier == 'd')
+				counter += convert_d(ap, &parsing);
+			else if (parsing.specifier == 'x')
+				counter += convert_x(ap, &parsing);
+			else
+				return (-1);
 		}
 		else
 		{
-			ft_putchar(*fmt);
-			fmt++;
-			i++;
+			ft_putchar(*fmt++);
+			counter++;
 		}
 	}
-	va_end(ap);
-	return (i);
+	return (counter);
 }
